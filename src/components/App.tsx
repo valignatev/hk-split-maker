@@ -18,8 +18,14 @@ interface AppState {
     splitOutput: string;
     categories?: Record<string, Array<CategoryDefinition>>;
     initialCategory: string;
+    currentCategory: CategoryDefinition;
     alertBannerVisible: boolean;
 }
+
+const DEFAULT_CATEGORY: CategoryDefinition = Object.freeze({
+    "fileName": "4ms",
+    "displayName": "4 Mask Shards",
+});
 export default class App extends Component<AppProps, AppState> {
 
     private inputEditor: React.MutableRefObject<SplitConfigEditor|null>;
@@ -31,19 +37,24 @@ export default class App extends Component<AppProps, AppState> {
         this.state = {
             configInput: "",
             splitOutput: "",
-            initialCategory: "",
+            initialCategory: DEFAULT_CATEGORY.fileName,
+            currentCategory: DEFAULT_CATEGORY,
             alertBannerVisible: true,
         };
         this.inputEditor = React.createRef();
     }
     public async componentDidMount(): Promise<void> {
-        const newState = { categories: await getCategoryDirectory(), initialCategory: "", };
-        const hash = window.location.hash.substring(1);
+        const newState = { ...this.state, };
+        newState.categories = await getCategoryDirectory();
         if (newState.categories) {
-            const initialCategory = Object.values(newState.categories).flat().find(category => {
+            const hash = window.location.hash.substring(1);
+            const matchedCategory = Object.values(newState.categories).flat().find(category => {
                 return category.fileName.toLowerCase() === hash.toLowerCase();
             });
-            newState.initialCategory = initialCategory?.fileName || "4ms";
+            if (matchedCategory) {
+                newState.currentCategory = matchedCategory;
+                newState.initialCategory = matchedCategory.fileName;
+            }
             await this.updateCategory(newState.initialCategory);
         }
         this.setState(newState);
@@ -73,8 +84,8 @@ export default class App extends Component<AppProps, AppState> {
                                 {this.state.categories && this.state.initialCategory && <CategorySelect
                                     id="categories"
                                     onChange={this.onCategorySelect.bind(this)}
-                                    data={this.state.categories}
-                                    initial={this.state.initialCategory}
+                                    categories={this.state.categories}
+                                    currentCategory={this.state.currentCategory}
                                 />}
                                 <ArrowButton
                                     text="Generate"
@@ -126,6 +137,18 @@ export default class App extends Component<AppProps, AppState> {
 
     private async updateCategory(name: string) {
         if (name && this.inputEditor.current) {
+            if (this.state.categories) {
+                const matchedCategory = Object.values(this.state.categories).flat().find(category => {
+                    return category.fileName.toLowerCase() === name.toLowerCase();
+                });
+                if (matchedCategory) {
+                    const newState = { ...this.state, };
+                    newState.currentCategory = matchedCategory;
+                    this.setState(newState);
+                }
+            }
+
+
             const editorContent = await getCategory(name);
             this.inputEditor.current.setContent(editorContent);
             this.onConfigInputChange(editorContent);
@@ -133,6 +156,8 @@ export default class App extends Component<AppProps, AppState> {
                 window.location.hash = name;
             }
             this.categoryHasChanged = true;
+
+
         }
     }
     private async onCategorySelect() {
