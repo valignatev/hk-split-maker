@@ -1,4 +1,5 @@
 import React from "react";
+import Select from "react-select";
 import type { CategoryDefinition } from "../asset/categories/category-directory.json";
 import "./CategorySelect.css";
 
@@ -16,14 +17,25 @@ const CategorySelect: React.FC<Props> = ({
     initial,
 }: Props) => {
     if (!data) {
-        return <select id={id}></select>;
+        return <Select id={id}></Select>;
     }
-    const optGroups = Object.entries(data).map(([groupName, values]) => {
-        const categories = values.map(value => {
-            return <option value={value.fileName} key={value.fileName}>{value.displayName}</option>;
+    const optGroups = Object.entries(data).map(([groupName, groupEntries]) => {
+        const options = groupEntries.map(entry => {
+            return {
+                value: entry.fileName,
+                label: entry.displayName,
+            };
         });
-        return <optgroup label={groupName} key={groupName}>{categories}</optgroup>;
+        return {
+            label: groupName,
+            options: options,
+        };
     });
-    return <select id={id} defaultValue={initial} onChange={onChange} className="catsel">{optGroups}</select>;
+    return (
+        <Select className="catsel"
+            id={id}
+            options={optGroups}
+        />
+    );
 };
 export default CategorySelect;
